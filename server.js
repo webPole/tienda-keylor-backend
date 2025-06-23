@@ -6,6 +6,7 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -276,31 +277,22 @@ app.post('/webhook', async (req, res) => {
     }
     try {
         console.log('📨 Webhook recibido:', req.body);
-        
         const { type, data } = req.body;
-        
         if (type === 'payment') {
             const paymentId = data.id;
-            
-            // Para desarrollo, creamos datos simulados
-            const paymentData = {
-                id: paymentId,
-                status: 'approved',
-                status_detail: 'accredited',
-                transaction_amount: 1000,
-                currency_id: 'ARS',
-                payer: {
-                    email: 'cliente@ejemplo.com',
-                    first_name: 'Cliente',
-                    last_name: 'Ejemplo'
-                },
-                payment_method: {
-                    type: 'credit_card'
-                },
-                installments: 1,
-                external_reference: 'REF-' + Date.now()
-            };
-            
+            // Consultar los datos reales del pago a la API de MercadoPago
+            const accessToken = process.env.MP_ACCESS_TOKEN;
+            const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const paymentData = await response.json();
+            if (!paymentData || paymentData.error) {
+                console.error('❌ Error al consultar pago en MercadoPago:', paymentData);
+                return res.status(500).json({ error: 'No se pudo obtener el pago real de MercadoPago' });
+            }
             // Insertar o actualizar en la base de datos
             const stmt = db.prepare(`
                 INSERT OR REPLACE INTO pagos (
@@ -309,20 +301,19 @@ app.post('/webhook', async (req, res) => {
                     payment_method, installments, datos_envio, productos
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            
             stmt.run([
-                paymentId,
+                paymentData.id,
                 paymentData.external_reference,
                 paymentData.status,
                 paymentData.status_detail,
                 paymentData.transaction_amount,
                 paymentData.currency_id,
-                paymentData.payer.email,
-                `${paymentData.payer.first_name} ${paymentData.payer.last_name}`,
-                paymentData.payment_method.type,
-                paymentData.installments,
+                paymentData.payer?.email || '',
+                `${paymentData.payer?.first_name || ''} ${paymentData.payer?.last_name || ''}`.trim(),
+                paymentData.payment_method_id || '',
+                paymentData.installments || 1,
                 JSON.stringify(paymentData.payer),
-                JSON.stringify([])
+                JSON.stringify(paymentData.additional_info?.items || [])
             ], function(err) {
                 if (err) {
                     console.error('❌ Error al guardar pago:', err);
@@ -336,7 +327,6 @@ app.post('/webhook', async (req, res) => {
                     });
                 }
             });
-            
             stmt.finalize();
         } else {
             console.log('⚠️ Tipo de webhook no reconocido:', type);
