@@ -43,15 +43,28 @@ db.serialize(() => {
 
 // Función para cargar usuarios desde user.json
 function loadUsers() {
+    console.log('📁 Intentando cargar archivo user.json...');
+    
     try {
+        // Verificar si el archivo existe
+        if (!fs.existsSync('user.json')) {
+            console.log('❌ Archivo user.json NO existe en el directorio actual');
+            console.log('📂 Directorio actual:', __dirname);
+            console.log('📋 Archivos en el directorio:', fs.readdirSync(__dirname));
+            throw new Error('Archivo user.json no encontrado');
+        }
+        
         const userData = fs.readFileSync('user.json', 'utf8');
+        console.log('📄 Contenido del archivo user.json:', userData);
+        
         const users = JSON.parse(userData);
-        console.log('📁 Archivo user.json cargado correctamente');
+        console.log('✅ Archivo user.json cargado correctamente');
         console.log('👤 Usuario configurado:', users.admin.email);
+        console.log('🔑 Contraseña configurada:', users.admin.password);
         return users;
     } catch (error) {
-        console.error('❌ Error al cargar usuarios:', error);
-        console.log('🔄 Usando valores por defecto');
+        console.error('❌ Error al cargar usuarios:', error.message);
+        console.log('🔄 Usando valores por defecto del código');
         return { 
             admin: { 
                 email: 'admin@tienda-keylor.com', 
@@ -346,13 +359,16 @@ app.get('/health', (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
+    // Cargar usuarios para mostrar las credenciales correctas
+    const users = loadUsers();
+    
     console.log(`🚀 Servidor iniciado en puerto ${PORT}`);
     console.log(`🔐 Login: http://localhost:${PORT}/login`);
     console.log(`📊 Panel de administración: http://localhost:${PORT}/admin`);
     console.log(`🔗 Webhook URL: http://localhost:${PORT}/webhook`);
     console.log(`💚 Health check: http://localhost:${PORT}/health`);
     console.log(`🧪 Pago de prueba: POST http://localhost:${PORT}/api/pago-prueba`);
-    console.log(`🔑 Credenciales: admin@tiendakeylor.com / admin123`);
+    console.log(`🔑 Credenciales: ${users.admin.email} / ${users.admin.password}`);
 });
 
 // Manejo de errores no capturados
