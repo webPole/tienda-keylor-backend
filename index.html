@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tienda con Mercado Pago</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" href="/logo-k.png">
+    <script src="config.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            scroll-behavior: smooth;
+            padding-top: 80px; /* Compensar el navbar fijo */
+        }
+
+        .producto {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px;
+            display: inline-block;
+        }
+
+        #carrito {
+            margin-top: 20px;
+            border-top: 2px solid #000;
+            padding-top: 20px;
+        }
+
+        .formulario-envio {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .formulario-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1999;
+        }
+
+        /* Estilos para las nuevas secciones */
+        .nav-link:hover span:last-child {
+            transform: scaleX(1);
+            transform-origin: right;
+        }
+
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .btn {
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Animaciones para las secciones */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Estilos para el formulario de contacto */
+        .form-control:focus {
+            border-color: #00ff9d;
+            box-shadow: 0 0 0 0.2rem rgba(0, 255, 157, 0.25);
+        }
+
+        /* Efectos hover para los iconos de contacto */
+        .contact-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .contact-icon:hover {
+            transform: scale(1.1);
+        }
+
+        /* Estilos para los botones de cantidad */
+        .cantidad-btn {
+            transition: all 0.3s ease !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .cantidad-btn:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+        }
+
+        .cantidad-btn:active {
+            transform: scale(0.95) !important;
+        }
+
+        /* Estilos para el input de cantidad */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        /* Efecto de focus en el contenedor de cantidad */
+        .cantidad-container:focus-within {
+            border-color: #00ff9d !important;
+            box-shadow: 0 0 0 0.2rem rgba(0, 255, 157, 0.25) !important;
+        }
+
+        /* Estilos para las etiquetas de descuento */
+        .descuento-badge {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Efecto hover en las imágenes de productos */
+        .card:hover .card-img-top {
+            transform: scale(1.05);
+        }
+
+        /* Estilos para los precios */
+        .precio-original {
+            text-decoration: line-through;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .precio-actual {
+            color: #00ff9d;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .ahorro-texto {
+            color: #28a745;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        /* Efecto de brillo en las etiquetas */
+        .etiqueta-descuento {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .etiqueta-descuento::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% {
+                transform: translateX(-100%) rotate(45deg);
+            }
+            100% {
+                transform: translateX(100%) rotate(45deg);
+            }
+        }
+
+        /* Estilos para el carrito emergente */
+        .carrito-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1999;
+        }
+
+        .carrito-emergente {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 0;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .carrito-header {
+            background: linear-gradient(45deg, #000428, #004e92);
+            color: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .carrito-body {
+            padding: 20px;
+        }
+
+        .carrito-footer {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+            background: #f8f9fa;
+            border-radius: 0 0 20px 20px;
+        }
+
+        /* Estilos para la sección de bienvenida */
+        .welcome-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 20px;
+            padding: 40px 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .welcome-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(0,255,157,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 4s infinite;
+        }
+
+        .welcome-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .feature-item {
+            transition: transform 0.3s ease;
+            padding: 15px;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .feature-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .welcome-actions .btn {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .welcome-actions .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        /* Animación de entrada para la bienvenida */
+        .welcome-section {
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Z-index alto para SweetAlert */
+        .swal-high-z-index {
+            z-index: 9999 !important;
+        }
+
+        /* Asegurar que SweetAlert siempre esté delante */
+        .swal2-container {
+            z-index: 9999 !important;
+        }
+
+        /* Botón flotante de WhatsApp */
+        .whatsapp-float {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #25d366, #128c7e);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 30px;
+            box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: whatsapp-pulse 2s infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .whatsapp-float:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.4);
+        }
+
+        @keyframes whatsapp-pulse {
+            0% {
+                box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+            }
+            50% {
+                box-shadow: 0 4px 20px rgba(37, 211, 102, 0.8), 0 0 0 10px rgba(37, 211, 102, 0.1);
+            }
+            100% {
+                box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+            }
+        }
+
+        /* Botón de subir arriba */
+        .scroll-to-top {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            bottom: 20px;
+            left: 20px;
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .scroll-to-top.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-to-top:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.6);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .whatsapp-float {
+                width: 55px;
+                height: 55px;
+                font-size: 25px;
+                bottom: 15px;
+                right: 15px;
+            }
+
+            .scroll-to-top {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+                bottom: 15px;
+                left: 15px;
+            }
+
+            .whatsapp-modal-content {
+                width: 95%;
+                padding: 25px;
+            }
+        }
+
+        /* Ventana emergente de WhatsApp */
+        .whatsapp-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .whatsapp-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #25d366, #128c7e);
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modal-slide-in 0.5s ease;
+        }
+
+        @keyframes modal-slide-in {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        .whatsapp-modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .whatsapp-modal-header h3 {
+            color: white;
+            font-size: 1.5rem;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .whatsapp-modal-header .welcome-message {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .whatsapp-input {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        .whatsapp-input:focus {
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .whatsapp-send-btn {
+            width: 100%;
+            padding: 15px;
+            background: white;
+            color: #25d366;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .whatsapp-send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .whatsapp-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .whatsapp-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        /* Responsive */
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark shadow fixed-top" style="background: linear-gradient(45deg, #000428, #004e92); ">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#" style="font-size: 1.8rem;">
+                <img src="logo-k.png" alt="Logo" style="height: 40px; margin-right: 10px;">
+                <span style="color: #00ff9d;">Tienda</span>Keylor
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Alternar navegación">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#inicio" style="position: relative; overflow: hidden;">
+                            <span style="position: relative; z-index: 1;">Inicio</span>
+                            <span style="position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #00ff9d; transform: scaleX(0); transition: transform 0.3s ease; transform-origin: right"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ofertas.html" style="position: relative; overflow: hidden;">
+                            <span style="position: relative; z-index: 1;">🔥 Ofertas</span>
+                            <span style="position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #ff6b6b; transform: scaleX(0); transition: transform 0.3s ease; transform-origin: right"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#acercaDe" style="position: relative; overflow: hidden;">
+                            <span style="position: relative; z-index: 1;">Acerca de</span>
+                            <span style="position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #00ff9d; transform: scaleX(0); transition: transform 0.3s ease; transform-origin: right"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contacto" style="position: relative; overflow: hidden;">
+                            <span style="position: relative; z-index: 1;">Contacto</span>
+                            <span style="position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #00ff9d; transform: scaleX(0); transition: transform 0.3s ease; transform-origin: right"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="openAdminPanel()" id="admin-link">
+                            <span><i class="fas fa-chart-line me-1"></i>Panel Admin</span>
+                            <span style="position: absolute; bottom: 0; left: 0; width: 0; height: 2px; background: linear-gradient(45deg, #00ff9d, #004e92); transition: transform 0.3s ease;"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-outline-light position-relative" onclick="mostrarCarritoEmergente()" style="border-radius: 25px; padding: 8px 15px;">
+                            <i class="fas fa-shopping-cart me-1"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="carrito-badge" style="background: linear-gradient(45deg, #ff6b6b, #ee5a52); display: none;">
+                                0
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-outline-light" onclick="mostrarFormularioEnvio()" id="btnDatosEnvio" style="border-radius: 25px; padding: 8px 15px;">
+                            <i class="fas fa-shipping-fast me-1"></i>Datos de Envío
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-3" id="inicio">
+        <!-- Mensaje de Bienvenida -->
+        <div class="welcome-section text-center mb-5">
+            <div class="welcome-content">
+                <h1 class="display-3 fw-bold mb-4" style="background: linear-gradient(45deg, #00ff9d, #004e92); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                    ¡Bienvenido a TiendaKeylor! 🛍️
+                </h1>
+                <p class="lead mb-4" style="color: #555; font-size: 1.3rem; line-height: 1.8;">
+                    Descubre nuestra increíble colección de ropa deportiva y casual con los mejores precios y calidad garantizada.
+                </p>
+                <div class="welcome-features d-flex justify-content-center gap-4 mb-4">
+                    <div class="feature-item">
+                        <i class="fas fa-shipping-fast text-primary" style="font-size: 2rem; color: #00ff9d;"></i>
+                        <p class="mb-0 mt-2 fw-bold">Envío Rápido</p>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-medal text-warning" style="font-size: 2rem; color: #ff6b6b;"></i>
+                        <p class="mb-0 mt-2 fw-bold">Calidad Premium</p>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-tag text-success" style="font-size: 2rem; color: #28a745;"></i>
+                        <p class="mb-0 mt-2 fw-bold">Mejores Precios</p>
+                    </div>
+                </div>
+                <div class="welcome-actions">
+                    <a href="#productos" class="btn btn-lg me-3" style="background: linear-gradient(45deg, #00ff9d, #004e92); color: white; border-radius: 25px; padding: 12px 30px; font-weight: bold; border: none;">
+                        <i class="fas fa-shopping-bag me-2"></i>Ver Productos
+                    </a>
+                    <a href="ofertas.html" class="btn btn-lg btn-outline-primary" style="border: 2px solid #ff6b6b; color: #ff6b6b; border-radius: 25px; padding: 12px 30px; font-weight: bold;">
+                        <i class="fas fa-fire me-2"></i>Ver Ofertas
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="text-center">Nuestros Productos</h2>
+        <div class="row" id="productos">
+        </div>
+    </div>
+
+    <!-- Carrito Emergente -->
+    <div class="carrito-overlay" id="carritoOverlay"></div>
+    <div class="carrito-emergente" id="carritoEmergente">
+        <div class="carrito-header">
+            <h4 class="mb-0">
+                <i class="fas fa-shopping-cart me-2"></i>Tu Carrito
+            </h4>
+            <button type="button" class="btn-close btn-close-white" onclick="ocultarCarritoEmergente()"></button>
+        </div>
+        <div class="carrito-body">
+            <ul id="carrito" class="list-group mb-3">
+                <!-- El carrito se cargará dinámicamente -->
+            </ul>
+        </div>
+        <div class="carrito-footer">
+            <div class="d-flex gap-3 justify-content-center">
+                <button class="btn" onclick="mostrarFormularioEnvio()" style="background: linear-gradient(45deg, #00ff9d, #004e92); color: white; border-radius: 10px; font-weight: bold; border: none; padding: 12px 30px;">
+                    <i class="fas fa-shipping-fast me-2"></i>Datos de Envío
+                </button>
+                <button class="btn" id="btnPagar" title="POR FAVOR LLENA EL FORMULARIO ANTES DE PAGAR" onclick="pagar()" disabled style="background: linear-gradient(45deg, #ff6b6b, #ee5a52); color: white; border-radius: 10px; font-weight: bold; border: none; padding: 12px 30px;">
+                    <i class="fas fa-credit-card me-2"></i>Pagar con Mercado Pago
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección Acerca de -->
+    <section id="acercaDe" class="py-5 fade-in" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center mb-5">
+                    <h2 class="display-4 fw-bold" style="color: #000428; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
+                        <span style="color: #00ff9d;">Acerca</span> de Nosotros
+                    </h2>
+                    <div class="w-25 mx-auto" style="height: 4px; background: linear-gradient(90deg, #00ff9d, #004e92); border-radius: 2px;"></div>
+                </div>
+            </div>
+            <div class="row align-items-center">
+                <div class="col-lg-6 mb-4">
+                    <div class="card border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                        <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
+                             class="card-img-top" alt="Nuestra tienda" style="height: 300px; object-fit: cover;">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="ps-lg-4">
+                        <h3 class="fw-bold mb-4" style="color: #000428;">Tu Tienda de Confianza</h3>
+                        <p class="lead mb-4" style="color: #555; line-height: 1.8;">
+                            En <strong style="color: #00ff9d;">TiendaKeylor</strong>, nos dedicamos a ofrecerte la mejor calidad en ropa deportiva y casual. 
+                            Nuestros productos están cuidadosamente seleccionados para brindarte comodidad, estilo y durabilidad.
+                        </p>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3 contact-icon" style="width: 50px; height: 50px; background: linear-gradient(45deg, #00ff9d, #004e92); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-shipping-fast text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Envío Rápido</h6>
+                                        <small class="text-muted">Entrega en 24-48 horas</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3 contact-icon" style="width: 50px; height: 50px; background: linear-gradient(45deg, #00ff9d, #004e92); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-medal text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Calidad Premium</h6>
+                                        <small class="text-muted">Productos garantizados</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Panel de Administración -->
+    <section id="panel-admin" class="py-5 fade-in" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); display: none;">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center mb-5">
+                    <h2 class="display-4 fw-bold" style="color: #000428;">
+                        <span style="color: #00ff9d;">Panel de</span> Administración
+                    </h2>
+                    <div class="w-25 mx-auto" style="height: 4px; background: linear-gradient(90deg, #00ff9d, #004e92); border-radius: 2px;"></div>
+                    <p class="lead text-muted mt-3">Gestiona los productos de tu tienda</p>
+                    <button class="btn btn-outline-danger" onclick="cerrarSesionAdmin()" style="border-radius: 10px; font-weight: bold;">
+                        <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Formulario para agregar/editar productos -->
+            <div class="row mb-5">
+                <div class="col-lg-8 mx-auto">
+                    <div class="card border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                        <div class="card-header" style="background: linear-gradient(45deg, #000428, #004e92); color: white; padding: 20px;">
+                            <h4 class="mb-0">
+                                <i class="fas fa-plus-circle me-2"></i>
+                                <span id="form-title">Agregar Nuevo Producto</span>
+                            </h4>
+                        </div>
+                        <div class="card-body p-4">
+                            <form id="producto-form">
+                                <input type="hidden" id="producto-id" value="">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="producto-nombre" class="form-label fw-bold">Nombre del Producto</label>
+                                        <input type="text" class="form-control" id="producto-nombre" required style="border-radius: 10px; border: 2px solid #e9ecef;">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="producto-precio" class="form-label fw-bold">Precio Actual ($)</label>
+                                        <input type="number" class="form-control" id="producto-precio" required min="0" step="0.01" style="border-radius: 10px; border: 2px solid #e9ecef;">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="producto-precio-original" class="form-label fw-bold">Precio Original ($)</label>
+                                        <input type="number" class="form-control" id="producto-precio-original" required min="0" step="0.01" style="border-radius: 10px; border: 2px solid #e9ecef;">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="producto-descuento" class="form-label fw-bold">Descuento (%)</label>
+                                        <input type="number" class="form-control" id="producto-descuento" required min="0" max="100" style="border-radius: 10px; border: 2px solid #e9ecef;">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="producto-descripcion" class="form-label fw-bold">Descripción</label>
+                                    <textarea class="form-control" id="producto-descripcion" rows="3" required style="border-radius: 10px; border: 2px solid #e9ecef;"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="producto-imagen" class="form-label fw-bold">URL de la Imagen</label>
+                                    <input type="url" class="form-control" id="producto-imagen" required style="border-radius: 10px; border: 2px solid #e9ecef;">
+                                    <small class="text-muted">Ejemplo: img/remera1.jpg</small>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn flex-fill" style="background: linear-gradient(45deg, #00ff9d, #004e92); color: white; border-radius: 10px; font-weight: bold; border: none;">
+                                        <i class="fas fa-save me-2"></i>
+                                        <span id="submit-text">Guardar Producto</span>
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="limpiarFormulario()" style="border-radius: 10px; font-weight: bold;">
+                                        <i class="fas fa-times me-2"></i>Cancelar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de productos existentes -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                        <div class="card-header" style="background: linear-gradient(45deg, #000428, #004e92); color: white; padding: 20px;">
+                            <h4 class="mb-0">
+                                <i class="fas fa-list me-2"></i>Productos Existentes
+                            </h4>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead style="background: #f8f9fa;">
+                                        <tr>
+                                            <th style="border: none; padding: 15px;">Imagen</th>
+                                            <th style="border: none; padding: 15px;">Nombre</th>
+                                            <th style="border: none; padding: 15px;">Precio</th>
+                                            <th style="border: none; padding: 15px;">Descuento</th>
+                                            <th style="border: none; padding: 15px;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="productos-lista">
+                                        <!-- Los productos se cargarán dinámicamente aquí -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sección Contacto -->
+    <section id="contacto" class="py-5 fade-in" style="background: linear-gradient(135deg, #000428 0%, #004e92 100%);">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center mb-5">
+                    <h2 class="display-4 fw-bold text-white">
+                        <span style="color: #00ff9d;">Contáctanos</span>
+                    </h2>
+                    <div class="w-25 mx-auto" style="height: 4px; background: linear-gradient(90deg, #00ff9d, #ffffff); border-radius: 2px;"></div>
+                    <p class="lead text-white-50 mt-3">¿Tienes alguna pregunta? ¡Nos encantaría escucharte!</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="card border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                        <div class="card-body p-5">
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <h4 class="fw-bold mb-4" style="color: #000428;">Información de Contacto</h4>
+                                    <div class="mb-4">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="me-3 contact-icon" style="width: 40px; height: 40px; background: linear-gradient(45deg, #00ff9d, #004e92); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-map-marker-alt text-white"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-1">Dirección</h6>
+                                                <small class="text-muted">Av. donde sea</small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="me-3 contact-icon" style="width: 40px; height: 40px; background: linear-gradient(45deg, #00ff9d, #004e92); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-phone text-white"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-1">Teléfono</h6>
+                                                <small class="text-muted">+54 11 5592-9838</small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="me-3 contact-icon" style="width: 40px; height: 40px; background: linear-gradient(45deg, #00ff9d, #004e92); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-envelope text-white"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-1">Email</h6>
+                                                <small class="text-muted">info@tiendakeylor.com</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h4 class="fw-bold mb-4" style="color: #000428;">Envíanos un Mensaje</h4>
+                                    <form id="contactForm">
+                                        <div class="mb-3">
+                                            <input type="text" name="nombre" class="form-control" placeholder="Tu nombre" required style="border-radius: 10px; border: 2px solid #e9ecef;">
+                                        </div>
+                                        <div class="mb-3">
+                                            <input type="email" name="email" class="form-control" placeholder="Tu email" required style="border-radius: 10px; border: 2px solid #e9ecef;">
+                                        </div>
+                                        <div class="mb-3">
+                                            <textarea name="mensaje" class="form-control" rows="4" placeholder="Tu mensaje" required style="border-radius: 10px; border: 2px solid #e9ecef;"></textarea>
+                                        </div>
+                                        <button type="submit" class="btn w-100" style="background: linear-gradient(45deg, #00ff9d, #004e92); color: white; border-radius: 10px; font-weight: bold;">
+                                            Enviar Mensaje
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="formulario-overlay" id="formularioOverlay"></div>
+    <div class="formulario-envio" id="formularioEnvio">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold" style="color: #000428; margin: 0;">
+                <i class="fas fa-shipping-fast me-2" style="color: #00ff9d;"></i>Datos de Envío
+            </h4>
+            <button type="button" class="btn-close" onclick="ocultarFormularioEnvio()" style="background: none; border: none; font-size: 1.5rem; color: #666;">&times;</button>
+        </div>
+        <form id="formularioDatosEnvio" action="https://formspree.io/f/xeoklbzw" method="POST">
+            <input type="hidden" name="_subject" value="Nuevos Datos de Envío - TiendaKeylor">
+            <input type="hidden" name="_next" value="">
+            <div class="mb-3">
+                <input type="text" name="nombre" class="form-control" placeholder="Nombre" required style="border-radius: 10px; border: 2px solid #e9ecef; padding: 12px;">
+            </div>
+            <div class="mb-3">
+                <input type="text" name="apellido" class="form-control" placeholder="Apellido" required style="border-radius: 10px; border: 2px solid #e9ecef; padding: 12px;">
+            </div>
+            <div class="mb-3">
+                <input type="email" name="email" class="form-control" placeholder="Email" required style="border-radius: 10px; border: 2px solid #e9ecef; padding: 12px;">
+            </div>
+            <div class="mb-3">
+                <input type="tel" name="telefono" class="form-control" placeholder="Teléfono" required style="border-radius: 10px; border: 2px solid #e9ecef; padding: 12px;">
+            </div>
+            <div class="mb-4">
+                <input type="text" name="direccion" class="form-control" placeholder="Dirección" required style="border-radius: 10px; border: 2px solid #e9ecef; padding: 12px;">
+            </div>
+            <button type="submit" class="btn w-100" style="background: linear-gradient(45deg, #00ff9d, #004e92); color: white; border-radius: 10px; font-weight: bold; border: none; padding: 12px;">
+                <i class="fas fa-check me-2"></i>Confirmar Datos
+            </button>
+        </form>
+    </div>
+
+    <footer class="mt-5 text-center p-5" style="background: linear-gradient(135deg, #000428 0%, #004e92 100%); color: white;">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <h5 class="fw-bold mb-3">
+                        <img src="logo-k.png" alt="Logo" style="height: 30px; margin-right: 10px;">
+                        <span style="color: #00ff9d;">Tienda</span>Keylor
+                    </h5>
+                    <p class="text-white-50">Tu tienda de confianza para ropa deportiva y casual de la mejor calidad.</p>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <h6 class="fw-bold mb-3">Enlaces Rápidos</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#inicio" class="text-white-50 text-decoration-none">Inicio</a></li>
+                        <li class="mb-2"><a href="#acercaDe" class="text-white-50 text-decoration-none">Acerca de</a></li>
+                        <li class="mb-2"><a href="#contacto" class="text-white-50 text-decoration-none">Contacto</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <h6 class="fw-bold mb-3">Síguenos</h6>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="#" class="text-white-50" style="font-size: 1.5rem;"><i class="fab fa-facebook"></i></a>
+                        <a href="#" class="text-white-50" style="font-size: 1.5rem;"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="text-white-50" style="font-size: 1.5rem;"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+            </div>
+            <hr style="border-color: rgba(255,255,255,0.2);">
+            <div class="row">
+                <div class="col-12">
+                    <p class="mb-1">© 2025 TiendaKeylor. Todos los derechos reservados.</p>
+                    <p class="text-white-50">Desarrollado por <a href="#" target="_blank" class="text-info text-decoration-none">WebPole</a></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <script src="/tienda.js"></script>
+
+    <script>
+        // Función para mostrar el formulario de envío
+        function mostrarFormularioEnvio() {
+            // Verificar si ya están registrados los datos
+            const datosRegistrados = localStorage.getItem('datosEnvio');
+            if (datosRegistrados) {
+                const datos = JSON.parse(datosRegistrados);
+                Swal.fire({
+                    title: '✅ Datos Ya Registrados',
+                    html: `
+                        <p><strong>${datos.nombre} ${datos.apellido}</strong></p>
+                        <p>Teléfono: ${datos.telefono}</p>
+                        <p>Dirección: ${datos.direccion}</p>
+                        <hr>
+                        <p class="text-muted">¿Deseas actualizar tus datos de envío?</p>
+                    `,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: 'Actualizar Datos',
+                    cancelButtonText: 'Mantener Actuales',
+                    confirmButtonColor: '#00ff9d',
+                    cancelButtonColor: '#6c757d',
+                    customClass: {
+                        popup: 'swal-high-z-index'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Mostrar formulario para actualizar
+                        document.getElementById('formularioOverlay').style.display = 'block';
+                        document.getElementById('formularioEnvio').style.display = 'block';
+                        
+                        // Llenar el formulario con los datos actuales
+                        document.querySelector('input[name="nombre"]').value = datos.nombre;
+                        document.querySelector('input[name="apellido"]').value = datos.apellido;
+                        document.querySelector('input[name="telefono"]').value = datos.telefono;
+                        document.querySelector('input[name="direccion"]').value = datos.direccion;
+                    }
+                });
+                return;
+            }
+            
+            // Si no están registrados, mostrar formulario normal
+            document.getElementById('formularioOverlay').style.display = 'block';
+            document.getElementById('formularioEnvio').style.display = 'block';
+        }
+
+        // Función para ocultar el formulario de envío
+        function ocultarFormularioEnvio() {
+            document.getElementById('formularioOverlay').style.display = 'none';
+            document.getElementById('formularioEnvio').style.display = 'none';
+        }
+
+        // Verifica si el formulario ya fue enviado y habilita el botón de pago
+        if (localStorage.getItem('formularioEnviado')) {
+            document.getElementById('btnPagar').disabled = false;
+        }
+
+        // Función para actualizar el botón de datos de envío
+        function actualizarBotonDatosEnvio() {
+            const datosRegistrados = localStorage.getItem('datosEnvio');
+            const btnDatosEnvio = document.getElementById('btnDatosEnvio');
+            
+            if (datosRegistrados) {
+                const datos = JSON.parse(datosRegistrados);
+                btnDatosEnvio.innerHTML = `
+                    <i class="fas fa-check-circle me-1"></i>${datos.nombre}
+                `;
+                btnDatosEnvio.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+                btnDatosEnvio.style.color = 'white';
+                btnDatosEnvio.style.border = 'none';
+            } else {
+                btnDatosEnvio.innerHTML = `
+                    <i class="fas fa-shipping-fast me-1"></i>Datos de Envío
+                `;
+                btnDatosEnvio.style.background = '';
+                btnDatosEnvio.style.color = '';
+                btnDatosEnvio.style.border = '';
+            }
+        }
+
+        // Actualizar botón al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            actualizarBotonDatosEnvio();
+        });
+
+        // Funciones para el carrito emergente
+        function mostrarCarritoEmergente() {
+            // Verificar si el carrito está vacío
+            if (carrito.length === 0) {
+                Swal.fire({
+                    title: "🛒 Carrito Vacío",
+                    text: "Agrega productos antes de pagar",
+                    icon: "info",
+                    confirmButtonText: "Entendido",
+                    confirmButtonColor: "#00ff9d",
+                    showCancelButton: false,
+                    allowOutsideClick: true
+                });
+                return;
+            }
+            
+            // Si hay productos, mostrar el carrito
+            document.getElementById('carritoOverlay').style.display = 'block';
+            document.getElementById('carritoEmergente').style.display = 'block';
+            mostrarCarrito(); // Actualizar el contenido del carrito
+        }
+
+        function ocultarCarritoEmergente() {
+            document.getElementById('carritoOverlay').style.display = 'none';
+            document.getElementById('carritoEmergente').style.display = 'none';
+        }
+
+        // Event listener para cerrar carrito al hacer clic fuera
+        document.getElementById('carritoOverlay').addEventListener('click', ocultarCarritoEmergente);
+
+        // Evento para ocultar el formulario al hacer clic fuera de él
+        document.getElementById('formularioOverlay').addEventListener('click', ocultarFormularioEnvio);
+
+        // Función para manejar las animaciones de scroll
+        function handleScrollAnimations() {
+            const elements = document.querySelectorAll('.fade-in');
+            elements.forEach(element => {
+                const elementTop = element.getBoundingClientRect().top;
+                const elementVisible = 150;
+                
+                if (elementTop < window.innerHeight - elementVisible) {
+                    element.classList.add('visible');
+                }
+            });
+        }
+
+        // Función para manejar el formulario de contacto
+        document.getElementById('contactForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            // Obtener los datos del formulario
+            const formData = new FormData(this);
+            const nombre = this.querySelector('input[type="text"]').value;
+            const email = this.querySelector('input[type="email"]').value;
+            const mensaje = this.querySelector('textarea').value;
+            
+            // Agregar información adicional al formData
+            formData.append('pagina', 'Formulario de Contacto');
+            formData.append('fecha', new Date().toLocaleString('es-AR'));
+            
+            // Enviar datos por Formspree
+            fetch('https://formspree.io/f/xeoklbzw', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('Respuesta de Formspree (Contacto):', response);
+                console.log('Status:', response.status);
+                console.log('OK:', response.ok);
+                
+                if (response.ok) {
+                    // Mostrar mensaje de éxito
+                    Swal.fire({
+                        title: '¡Mensaje Enviado!',
+                        text: `Gracias ${nombre}, tu mensaje ha sido enviado correctamente y recibirás respuesta pronto a ${email}`,
+                        icon: 'success',
+                        confirmButtonText: 'Perfecto',
+                        confirmButtonColor: '#00ff9d',
+                        customClass: {
+                            popup: 'swal-high-z-index'
+                        }
+                    });
+                    
+                    // Limpiar el formulario
+                    this.reset();
+                } else {
+                    console.error('Error en respuesta de Formspree (Contacto):', response.status, response.statusText);
+                    // Si falla el envío por email, mostrar mensaje de error
+                    Swal.fire({
+                        title: 'Error al Enviar',
+                        text: 'Hubo un problema al enviar tu mensaje. Por favor, intenta nuevamente.',
+                        icon: 'error',
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#00ff9d',
+                        customClass: {
+                            popup: 'swal-high-z-index'
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error enviando email de contacto:', error);
+                // Si hay error, mostrar mensaje de error
+                Swal.fire({
+                    title: 'Error al Enviar',
+                    text: 'Hubo un problema al enviar tu mensaje. Por favor, intenta nuevamente.',
+                    icon: 'error',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#00ff9d',
+                    customClass: {
+                        popup: 'swal-high-z-index'
+                    }
+                });
+            });
+        });
+
+        // Event listener para las animaciones de scroll
+        window.addEventListener('scroll', handleScrollAnimations);
+        
+        // Ejecutar una vez al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            handleScrollAnimations();
+        });
+
+        // Navegación suave para los enlaces del menú
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Mostrar botón de admin si está autenticado
+        const adminAutenticado = localStorage.getItem('adminAutenticado');
+        if (adminAutenticado) {
+            document.getElementById('admin-link').style.display = 'block';
+        }
+
+        // Mostrar/ocultar botón de subir arriba según el scroll
+        window.addEventListener('scroll', function() {
+            const scrollToTopBtn = document.getElementById('scrollToTop');
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.classList.add('show');
+            } else {
+                scrollToTopBtn.classList.remove('show');
+            }
+        });
+
+        // Función para abrir el panel de administración
+        function openAdminPanel() {
+            const backendUrl = window.BackendConfig.getBackendUrl('/login');
+            window.open(backendUrl, '_blank');
+        }
+    </script>
+
+    <!-- Botón flotante de WhatsApp -->
+    <div class="whatsapp-float" onclick="mostrarWhatsAppModal()">
+        <i class="fab fa-whatsapp"></i>
+    </div>
+
+    <!-- Ventana emergente de WhatsApp -->
+    <div class="whatsapp-modal" id="whatsappModal">
+        <div class="whatsapp-modal-content">
+            <button class="whatsapp-close" onclick="cerrarWhatsApp()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="whatsapp-modal-header">
+                <h3><i class="fab fa-whatsapp"></i> ¡Hola!</h3>
+                <div class="welcome-message">¿En qué podemos ayudarte hoy?</div>
+            </div>
+            <input type="text" class="whatsapp-input" id="whatsappInput" placeholder="Escribe tu mensaje aquí..." maxlength="200">
+            <button class="whatsapp-send-btn" onclick="enviarWhatsApp()">
+                <i class="fab fa-whatsapp"></i> Enviar
+            </button>
+        </div>
+    </div>
+
+    <!-- Botón de subir arriba -->
+    <div class="scroll-to-top" id="scrollToTop" onclick="scrollToTop()">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+
+    <script>
+        // Funciones para WhatsApp
+        function mostrarWhatsAppModal() {
+            document.getElementById('whatsappModal').style.display = 'block';
+            document.getElementById('whatsappInput').focus();
+        }
+
+        function cerrarWhatsApp() {
+            document.getElementById('whatsappModal').style.display = 'none';
+            document.getElementById('whatsappInput').value = '';
+        }
+
+        function enviarWhatsApp() {
+            const mensaje = document.getElementById('whatsappInput').value.trim();
+            if (mensaje) {
+                // Aquí puedes integrar con la API de WhatsApp Business o usar un enlace directo
+                const numeroWhatsApp = '5491155929838'; // Número de WhatsApp actualizado
+                const mensajeEncoded = encodeURIComponent(mensaje);
+                const url = `https://wa.me/${numeroWhatsApp}?text=${mensajeEncoded}`;
+                
+                // Abrir WhatsApp en nueva pestaña
+                window.open(url, '_blank');
+                
+                // Limpiar input y cerrar modal
+                document.getElementById('whatsappInput').value = '';
+                cerrarWhatsApp();
+                
+                // Mostrar confirmación
+                Swal.fire({
+                    title: '¡Mensaje Enviado!',
+                    text: 'Tu mensaje se abrirá en WhatsApp',
+                    icon: 'success',
+                    confirmButtonText: 'Perfecto',
+                    confirmButtonColor: '#25d366'
+                });
+            } else {
+                Swal.fire({
+                    title: 'Mensaje Vacío',
+                    text: 'Por favor escribe un mensaje',
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#25d366'
+                });
+            }
+        }
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('whatsappModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                cerrarWhatsApp();
+            }
+        });
+
+        // Enviar mensaje con Enter
+        document.getElementById('whatsappInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                enviarWhatsApp();
+            }
+        });
+
+        // Funciones para el botón de subir arriba
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    </script>
+
+    </body>
+    </html>
+        

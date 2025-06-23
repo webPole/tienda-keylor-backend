@@ -1,0 +1,13 @@
+{
+  "admin": {
+    "email": "admin@tiendakeylor.com",
+    "password": "admin123",
+    "nombre": "Administrador"
+  },
+  "ofertas": {
+    "fechaFin": "2025-01-15T23:59:59",
+    "activa": true,
+    "duracionOferta": 2,
+    "duracionPausa": 2
+  }
+} 
