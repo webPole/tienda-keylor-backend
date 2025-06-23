@@ -45,10 +45,20 @@ db.serialize(() => {
 function loadUsers() {
     try {
         const userData = fs.readFileSync('user.json', 'utf8');
-        return JSON.parse(userData);
+        const users = JSON.parse(userData);
+        console.log('📁 Archivo user.json cargado correctamente');
+        console.log('👤 Usuario configurado:', users.admin.email);
+        return users;
     } catch (error) {
-        console.error('Error al cargar usuarios:', error);
-        return { admin: { email: 'admin@tiendakeylor.com', password: 'admin123', nombre: 'Administrador' } };
+        console.error('❌ Error al cargar usuarios:', error);
+        console.log('🔄 Usando valores por defecto');
+        return { 
+            admin: { 
+                email: 'admin@tienda-keylor.com', 
+                password: '12032015Kp@', 
+                nombre: 'Administrador' 
+            } 
+        };
     }
 }
 
@@ -70,6 +80,9 @@ app.post('/api/login', (req, res) => {
     console.log('📧 Email recibido:', email);
     console.log('🔑 Contraseña recibida:', password);
     console.log('👤 Usuario configurado:', users.admin.email);
+    console.log('🔑 Contraseña configurada:', users.admin.password);
+    console.log('✅ Email coincide:', users.admin.email === email);
+    console.log('✅ Contraseña coincide:', users.admin.password === password);
     
     // Verificar credenciales
     if (users.admin && users.admin.email === email && users.admin.password === password) {
